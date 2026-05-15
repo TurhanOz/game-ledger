@@ -27,6 +27,7 @@ describe('computeSessionBalances', () => {
   const baseSession: GameSession = {
     id: 's1',
     date: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
     gameTypeId: 'gt1',
     buyIn: 1000,
     participantIds: ['alice', 'bob', 'charlie'],

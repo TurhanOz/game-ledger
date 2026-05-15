@@ -10,6 +10,7 @@ import type { GameSession, Refund } from '../types'
 const session1: GameSession = {
   id: 's1',
   date: '2026-01-01T00:00:00.000Z',
+  createdAt: '2026-01-01T00:00:00.000Z',
   gameTypeId: 'gt1',
   buyIn: 500,
   participantIds: ['alice', 'bob'],
@@ -19,6 +20,7 @@ const session1: GameSession = {
 const session2: GameSession = {
   id: 's2',
   date: '2026-01-02T00:00:00.000Z',
+  createdAt: '2026-01-02T00:00:00.000Z',
   gameTypeId: 'gt1',
   buyIn: 1000,
   participantIds: ['alice', 'bob'],
