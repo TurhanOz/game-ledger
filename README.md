@@ -70,6 +70,27 @@ npm run build
 
 ---
 
+## 🌐 GitHub Pages Deployment
+
+This repository is pre-configured to deploy automatically via **GitHub Actions**.
+
+### Configuration Steps
+
+1. **Push your code:** Ensure all your changes are on the `main` branch.
+2. **Configure Settings:**
+   - Go to your repository on GitHub.
+   - Navigate to **Settings → Pages**.
+   - Under **Build and deployment > Source**, change the dropdown to **GitHub Actions**.
+3. **Verify Deployment:**
+   - The deployment workflow will trigger automatically on your next push.
+   - You can monitor progress under the **Actions** tab.
+   - Once complete, your app will be live at `https://<owner>.github.io/game-ledger/`.
+
+### Routing Note
+This application uses **Hash-based Routing** (`createWebHashHistory`). This ensures that deep links (e.g., `/#/session/...` or `/#/settings`) work correctly on GitHub Pages without requiring server-side fallback configuration. All routes remain accessible even after a browser refresh.
+
+---
+
 ## ⚖️ License
 
 **Proprietary**
