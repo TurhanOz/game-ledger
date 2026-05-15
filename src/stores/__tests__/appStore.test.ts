@@ -59,7 +59,6 @@ describe('Scenario 1.2 — Prevent linked player deletion', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Friday Night Poker',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -105,7 +104,6 @@ describe('Scenario 5.1 — localStorage sync', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test Session',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -182,7 +180,6 @@ describe('GameType management', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Chess Night',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 5,
@@ -214,7 +211,6 @@ describe('Session management', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 0.10,
@@ -233,7 +229,6 @@ describe('Session management', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -257,7 +252,6 @@ describe('Session management', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -313,7 +307,6 @@ describe('Computed getters', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -339,7 +332,6 @@ describe('Computed getters', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -374,7 +366,6 @@ describe('Computed getters', () => {
     const gameTypeId = store.gameTypes[0].id
 
     store.createSession({
-      title: 'Test',
       date: new Date().toISOString(),
       gameTypeId,
       buyIn: 10,
@@ -422,5 +413,166 @@ describe('Export / Import', () => {
     const store = useAppStore()
     const badJson = JSON.stringify({ players: 'not-an-array' })
     expect(() => store.importData(badJson)).toThrow()
+  })
+})
+
+// ── CHANGE 4 — Session Locking Policy ────────────────────────────────────────
+describe('CHANGE 4 — Session Locking Policy', () => {
+  function setup() {
+    const store = useAppStore()
+    store.addPlayer('Alice')
+    store.addPlayer('Bob')
+    store.addGameType('Poker')
+    const aliceId = store.players[0].id
+    const bobId = store.players[1].id
+    const gameTypeId = store.gameTypes[0].id
+    return { store, aliceId, bobId, gameTypeId }
+  }
+
+  it('canMutateSession returns true only for the session with the latest date', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-01-01', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    store.createSession({ date: '2026-01-03', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    store.createSession({ date: '2026-01-02', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    const sessions = store.gameSessions
+    const latestSession = sessions.find(s => s.date === '2026-01-03')!
+    const olderSessions = sessions.filter(s => s.date !== '2026-01-03')
+
+    expect(store.canMutateSession(latestSession.id)).toBe(true)
+    for (const s of olderSessions) {
+      expect(store.canMutateSession(s.id)).toBe(false)
+    }
+  })
+
+  it('addRound on a non-latest session is a no-op', () => {
+    const { store, aliceId, bobId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-01-01', gameTypeId, buyIn: 10, participantIds: [aliceId, bobId] })
+    store.createSession({ date: '2026-01-02', gameTypeId, buyIn: 10, participantIds: [aliceId, bobId] })
+
+    const olderSession = store.gameSessions.find(s => s.date === '2026-01-01')!
+
+    store.addRound(olderSession.id, aliceId)
+
+    expect(store.gameSessions.find(s => s.id === olderSession.id)!.rounds).toHaveLength(0)
+  })
+
+  it('deleteLastRound on a non-latest session is a no-op', () => {
+    const { store, aliceId, bobId, gameTypeId } = setup()
+
+    // Create older session and manually note it
+    store.createSession({ date: '2026-01-01', gameTypeId, buyIn: 10, participantIds: [aliceId, bobId] })
+    const olderSessionId = store.gameSessions[0].id
+
+    // Make it the latest temporarily so we can add a round
+    store.createSession({ date: '2025-12-31', gameTypeId, buyIn: 10, participantIds: [aliceId, bobId] })
+
+    // Now older session (2026-01-01) is still latest since it has the highest date
+    store.addRound(olderSessionId, aliceId)
+    expect(store.gameSessions.find(s => s.id === olderSessionId)!.rounds).toHaveLength(1)
+
+    // Create a newer session so olderSession is now locked
+    store.createSession({ date: '2026-01-02', gameTypeId, buyIn: 10, participantIds: [aliceId, bobId] })
+
+    store.deleteLastRound(olderSessionId)
+
+    // Round count must be unchanged
+    expect(store.gameSessions.find(s => s.id === olderSessionId)!.rounds).toHaveLength(1)
+  })
+
+  it('deleteSession on a non-latest session throws', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-01-01', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    store.createSession({ date: '2026-01-02', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    const olderSession = store.gameSessions.find(s => s.date === '2026-01-01')!
+
+    expect(() => store.deleteSession(olderSession.id)).toThrow()
+    expect(store.gameSessions).toHaveLength(2)
+  })
+
+  it('after deleting the latest session, the next-newest session becomes mutable', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-01-01', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    store.createSession({ date: '2026-01-02', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    const latestId = store.gameSessions.find(s => s.date === '2026-01-02')!.id
+    const nextNewestId = store.gameSessions.find(s => s.date === '2026-01-01')!.id
+
+    store.deleteSession(latestId)
+
+    expect(store.gameSessions).toHaveLength(1)
+    expect(store.canMutateSession(nextNewestId)).toBe(true)
+  })
+})
+
+// ── createdAt tiebreaker: same user-selected date ─────────────────────────────
+describe('Session ordering — createdAt tiebreaker', () => {
+  function setup() {
+    const store = useAppStore()
+    store.addPlayer('Alice')
+    store.addGameType('Poker')
+    const aliceId = store.players[0].id
+    const gameTypeId = store.gameTypes[0].id
+    return { store, aliceId, gameTypeId }
+  }
+
+  it('createSession stamps each session with a distinct createdAt ISO timestamp', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    const [s1, s2] = store.gameSessions
+    expect(typeof s1.createdAt).toBe('string')
+    expect(typeof s2.createdAt).toBe('string')
+    // Both should be valid ISO strings
+    expect(() => new Date(s1.createdAt).toISOString()).not.toThrow()
+    expect(() => new Date(s2.createdAt).toISOString()).not.toThrow()
+  })
+
+  it('latestSessionId resolves to the session created last when user dates are identical', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    // Same user-selected date — createdAt determines which is "latest"
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    const firstId = store.gameSessions[0].id
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    const secondId = store.gameSessions[1].id
+
+    // The second session was created after the first, so it must be the mutable one
+    expect(store.latestSessionId).toBe(secondId)
+    expect(store.canMutateSession(secondId)).toBe(true)
+    expect(store.canMutateSession(firstId)).toBe(false)
+  })
+
+  it('addRound is blocked on the first session when both share the same user date', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    const firstId = store.gameSessions[0].id
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    store.addRound(firstId, aliceId)
+
+    expect(store.gameSessions.find(s => s.id === firstId)!.rounds).toHaveLength(0)
+  })
+
+  it('deleteSession on the first session (same user date, created first) throws', () => {
+    const { store, aliceId, gameTypeId } = setup()
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+    const firstId = store.gameSessions[0].id
+
+    store.createSession({ date: '2026-05-15', gameTypeId, buyIn: 10, participantIds: [aliceId] })
+
+    expect(() => store.deleteSession(firstId)).toThrow()
+    expect(store.gameSessions).toHaveLength(2)
   })
 })

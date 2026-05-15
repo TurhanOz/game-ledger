@@ -56,8 +56,9 @@ export function parseAndValidateAppState(raw: unknown): AppState {
   for (const item of obj['gameSessions'] as unknown[]) {
     const s = item as Record<string, unknown>
     assertString(s['id'], 'gameSession.id')
-    assertString(s['title'], 'gameSession.title')
     assertString(s['date'], 'gameSession.date')
+    // createdAt is optional for backward-compatibility with older exports
+    if (s['createdAt'] !== undefined) assertString(s['createdAt'], 'gameSession.createdAt')
     assertString(s['gameTypeId'], 'gameSession.gameTypeId')
     if (typeof s['buyIn'] !== 'number') throw new Error('Invalid state: gameSession.buyIn must be a number')
     if (!Array.isArray(s['participantIds'])) throw new Error('Invalid state: gameSession.participantIds must be an array')
@@ -69,6 +70,7 @@ export function parseAndValidateAppState(raw: unknown): AppState {
 
     for (const round of s['rounds'] as unknown[]) {
       assertString((round as Record<string, unknown>)['winnerId'], 'round.winnerId')
+      assertString((round as Record<string, unknown>)['timestamp'], 'round.timestamp')
     }
   }
 

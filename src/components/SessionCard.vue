@@ -7,6 +7,7 @@ const props = defineProps<{
   session: GameSession
   players: Player[]
   gameTypes: GameType[]
+  isLatest: boolean
 }>()
 
 const emit = defineEmits<{ select: []; delete: [] }>()
@@ -34,7 +35,10 @@ function formatBuyIn(cents: number): string {
   <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
     <div class="flex items-start justify-between gap-2">
       <div class="min-w-0">
-        <h3 class="font-semibold text-gray-800 truncate">{{ session.title }}</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="font-semibold text-gray-800 truncate">{{ getGameTypeName(session.gameTypeId) }} — {{ formatDate(session.date) }}</h3>
+          <span v-if="!isLatest" class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">Locked</span>
+        </div>
         <p class="text-xs text-gray-500 mt-0.5">
           {{ getGameTypeName(session.gameTypeId) }} · {{ formatDate(session.date) }}
         </p>
@@ -53,6 +57,7 @@ function formatBuyIn(cents: number): string {
           Open
         </button>
         <button
+          v-if="isLatest"
           class="text-sm text-red-600 hover:underline min-h-[44px] px-2"
           @click="showConfirm = true"
         >
@@ -63,7 +68,7 @@ function formatBuyIn(cents: number): string {
 
     <ConfirmDialog
       :open="showConfirm"
-      :message="`Delete session &quot;${session.title}&quot;? All rounds will be lost.`"
+      :message="`Delete session &quot;${getGameTypeName(session.gameTypeId)} — ${formatDate(session.date)}&quot;? All rounds will be lost.`"
       @confirm="emit('delete'); showConfirm = false"
       @cancel="showConfirm = false"
     />

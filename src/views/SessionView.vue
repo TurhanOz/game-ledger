@@ -50,6 +50,8 @@ function handleWinnerSelected(playerId: string) {
 function handleUndo() {
   store.deleteLastRound(sessionId)
 }
+
+const isLatestSession = computed(() => store.canMutateSession(sessionId))
 </script>
 
 <template>
@@ -64,7 +66,7 @@ function handleUndo() {
     <template v-if="session">
       <!-- Session header -->
       <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-        <h1 class="text-xl font-bold text-gray-800">{{ session.title }}</h1>
+        <h1 class="text-xl font-bold text-gray-800">{{ gameTypeName }} — {{ formatDate(session.date) }}</h1>
         <p class="text-sm text-gray-500 mt-1">
           {{ gameTypeName }} · {{ formatDate(session.date) }} · Buy-in {{ formatBuyIn(session.buyIn) }}
         </p>
@@ -80,7 +82,7 @@ function handleUndo() {
       </div>
 
       <!-- Round entry -->
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+      <div v-if="isLatestSession" class="bg-white border border-gray-200 rounded-lg p-4 mb-4">
         <RoundEntryPanel :participants="participants" @winner-selected="handleWinnerSelected" />
       </div>
 
@@ -89,6 +91,7 @@ function handleUndo() {
         <RoundHistoryList
           :rounds="session.rounds"
           :players="store.players"
+          :can-undo="isLatestSession"
           @undo="handleUndo"
         />
       </div>

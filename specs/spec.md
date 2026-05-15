@@ -1,7 +1,5 @@
 # FUNCTIONAL SPECIFICATION: GAME LEDGER (V1.1)
 
-> **Changelog:** V1.0 → V1.1 — see [spec-diff1.md](spec-diff1.md) for a precise delta.
-
 ## 1. PRODUCT VISION
 Game Ledger is a web application (SPA) designed to calculate and track balances owed between players during fixed buy-in game sessions (e.g., Poker, Belote, Tarot). 
 - **Philosophy:** Total autonomy (no backend database), local persistence, and frictionless entry during live gameplay.
@@ -14,6 +12,7 @@ The global application state (`AppState`) must be JSON-serializable according to
 - **GameSessions:** `Array<{
     id: UUID,
     date: Date,
+    createdAt: ISO Timestamp (set at creation time — primary sort and locking key),
     gameTypeId: UUID,
     buyIn: Number (Amount X, stored as integer cents),
     participantIds: Array<UUID>,
@@ -30,10 +29,6 @@ The global application state (`AppState`) must be JSON-serializable according to
     locale: 'en' | 'fr',
     currency: '$' | '€'
   }`
-
-> **Removed:** `GameSession.title` — sessions are identified by their game type name and date only.  
-> **Added:** `Round.timestamp` — each round winner entry records the exact moment it was logged.  
-> **Added:** `AppSettings` — user-configurable preferences persisted alongside the rest of `AppState`.
 
 ## 3. BUSINESS LOGIC & CALCULATION RULES
 
@@ -64,11 +59,11 @@ The application must dynamically compute four reading levels:
 - The participant list is locked once the session is created (Y is fixed).
 
 #### Session List Ordering
-- Sessions displayed on the Dashboard are ordered **latest first** (descending by `date`).
+- Sessions displayed on the Dashboard are ordered **latest first**, sorted descending by `createdAt` (full ISO timestamp recorded at creation). For sessions imported from older state exports that lack `createdAt`, the `date` field is used as fallback.
 
 #### Session Locking Rules
 The application enforces a strict **latest-session-only** mutation policy:
-- **Only the most recently created session** (i.e., the session with the latest `date`) may have new round winners entered, its last round undone, or itself deleted.
+- **Only the most recently created session** (i.e., the session with the highest `createdAt` timestamp; falling back to `date` when `createdAt` is absent) may have new round winners entered, its last round undone, or itself deleted.
 - **All other sessions are permanently locked:** they are read-only and cannot be mutated or deleted under any circumstances.
 - Locked sessions are visually distinguishable from the active session (e.g., a lock indicator on the session card).
 

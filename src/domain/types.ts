@@ -10,12 +10,13 @@ export interface GameType {
 
 export interface Round {
   winnerId: string
+  timestamp: string
 }
 
 export interface GameSession {
   id: string
-  title: string
-  date: string         // ISO string
+  date: string         // ISO date string (user-selected, day precision)
+  createdAt: string    // ISO timestamp set at creation — primary sort/locking key
   gameTypeId: string
   buyIn: number        // stored as integer cents
   participantIds: string[]

@@ -92,7 +92,6 @@ export const useAppStore = defineStore('app', () => {
 
   // ── Session Actions ────────────────────────────────────────────────────────
   interface CreateSessionPayload {
-    title: string
     date: string
     gameTypeId: string
     buyIn: number      // dollars — stored as integer cents
@@ -102,8 +101,8 @@ export const useAppStore = defineStore('app', () => {
   function createSession(payload: CreateSessionPayload): void {
     gameSessions.value.push({
       id: crypto.randomUUID(),
-      title: payload.title,
       date: payload.date,
+      createdAt: new Date().toISOString(),
       gameTypeId: payload.gameTypeId,
       buyIn: Math.round(payload.buyIn * 100),
       participantIds: payload.participantIds,
@@ -111,17 +110,42 @@ export const useAppStore = defineStore('app', () => {
     })
   }
 
+  // ── Locking ────────────────────────────────────────────────────────────────
+  // Sort key: "date\x00createdAt" — date is primary, createdAt breaks same-day ties.
+  // When both are equal (e.g. rapid test creation), the session added LAST to the
+  // array wins (reduce with >= naturally selects the last element on equality).
+  function sessionSortKey(s: GameSession): string {
+    return s.date + '\x00' + (s.createdAt ?? '')
+  }
+
+  const latestSessionId = computed(() => {
+    if (gameSessions.value.length === 0) return null
+    const winner = gameSessions.value.reduce((best, curr) =>
+      sessionSortKey(curr) >= sessionSortKey(best) ? curr : best
+    )
+    return winner.id
+  })
+
+  function canMutateSession(id: string): boolean {
+    return id === latestSessionId.value
+  }
+
   function deleteSession(id: string): void {
+    if (!canMutateSession(id)) {
+      throw new Error(`Cannot delete session "${id}": session is locked.`)
+    }
     gameSessions.value = gameSessions.value.filter((s) => s.id !== id)
   }
 
   // ── Round Actions ──────────────────────────────────────────────────────────
   function addRound(sessionId: string, winnerId: string): void {
+    if (!canMutateSession(sessionId)) return
     const session = gameSessions.value.find((s) => s.id === sessionId)
-    if (session) session.rounds.push({ winnerId })
+    if (session) session.rounds.push({ winnerId, timestamp: new Date().toISOString() })
   }
 
   function deleteLastRound(sessionId: string): void {
+    if (!canMutateSession(sessionId)) return
     const session = gameSessions.value.find((s) => s.id === sessionId)
     if (session && session.rounds.length > 0) {
       session.rounds.pop()
@@ -193,6 +217,8 @@ export const useAppStore = defineStore('app', () => {
     // Session actions
     createSession,
     deleteSession,
+    latestSessionId,
+    canMutateSession,
     // Round actions
     addRound,
     deleteLastRound,

@@ -9,22 +9,20 @@ import type { GameSession, Refund } from '../types'
 
 const session1: GameSession = {
   id: 's1',
-  title: 'Session 1',
   date: '2026-01-01T00:00:00.000Z',
   gameTypeId: 'gt1',
   buyIn: 500,
   participantIds: ['alice', 'bob'],
-  rounds: [{ winnerId: 'alice' }],
+  rounds: [{ winnerId: 'alice', timestamp: '2026-01-01T00:00:00.000Z' }],
 }
 
 const session2: GameSession = {
   id: 's2',
-  title: 'Session 2',
   date: '2026-01-02T00:00:00.000Z',
   gameTypeId: 'gt1',
   buyIn: 1000,
   participantIds: ['alice', 'bob'],
-  rounds: [{ winnerId: 'alice' }],
+  rounds: [{ winnerId: 'alice', timestamp: '2026-01-02T00:00:00.000Z' }],
 }
 
 // Bob paid Alice $5 — Bob is emitter (who paid), Alice is receptor (who received)

@@ -15,7 +15,6 @@ const activeTab = ref<Tab>('consolidated')
 
 // ── New session form ──────────────────────────────────────────────────────────
 const showNewSessionForm = ref(false)
-const formTitle = ref('')
 const formDate = ref(new Date().toISOString().slice(0, 10))
 const formGameTypeId = ref('')
 const formBuyIn = ref('')
@@ -23,7 +22,6 @@ const formParticipantIds = ref<string[]>([])
 const formError = ref('')
 
 function openNewSessionForm() {
-  formTitle.value = ''
   formDate.value = new Date().toISOString().slice(0, 10)
   formGameTypeId.value = store.gameTypes[0]?.id ?? ''
   formBuyIn.value = ''
@@ -47,14 +45,12 @@ function toggleParticipant(id: string) {
 
 function submitNewSession() {
   formError.value = ''
-  if (!formTitle.value.trim()) { formError.value = 'Enter a session title.'; return }
   if (!formGameTypeId.value) { formError.value = 'Select a game type.'; return }
   const buyIn = parseFloat(formBuyIn.value)
   if (!formBuyIn.value || isNaN(buyIn) || buyIn <= 0) { formError.value = 'Enter a valid buy-in amount.'; return }
   if (formParticipantIds.value.length < 2) { formError.value = 'Select at least 2 participants.'; return }
 
   store.createSession({
-    title: formTitle.value.trim(),
     date: formDate.value,
     gameTypeId: formGameTypeId.value,
     buyIn,
@@ -73,8 +69,22 @@ function deleteSession(id: string) {
 }
 
 // ── Sorted sessions (newest first) ───────────────────────────────────────────
+// Sort key: date (primary) + createdAt (tiebreaker for same-day sessions).
+// When both are equal, the session at the higher array index (added later) wins.
+function sessionSortKey(s: typeof store.gameSessions[number]): string {
+  return s.date + '\x00' + (s.createdAt ?? '')
+}
+
 const sortedSessions = computed(() =>
-  [...store.gameSessions].sort((a, b) => b.date.localeCompare(a.date)),
+  [...store.gameSessions]
+    .map((s, idx) => ({ s, idx }))
+    .sort((a, b) => {
+      const ka = sessionSortKey(a.s)
+      const kb = sessionSortKey(b.s)
+      if (ka !== kb) return kb > ka ? 1 : -1
+      return b.idx - a.idx   // same key: later in array = more recent
+    })
+    .map(x => x.s),
 )
 
 const tabs: { key: Tab; label: string }[] = [
@@ -155,6 +165,7 @@ const tabs: { key: Tab; label: string }[] = [
         :session="session"
         :players="store.players"
         :game-types="store.gameTypes"
+        :is-latest="session.id === store.latestSessionId"
         @select="openSession(session.id)"
         @delete="deleteSession(session.id)"
       />
@@ -171,17 +182,6 @@ const tabs: { key: Tab; label: string }[] = [
           <h2 class="text-lg font-semibold text-gray-800 mb-4">New Session</h2>
 
           <form class="space-y-4" @submit.prevent="submitNewSession">
-            <!-- Title -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-              <input
-                v-model="formTitle"
-                type="text"
-                placeholder="e.g. Friday night poker"
-                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px]"
-              />
-            </div>
-
             <!-- Date + Game Type -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

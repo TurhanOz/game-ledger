@@ -6,6 +6,7 @@ import ConfirmDialog from './ConfirmDialog.vue'
 const props = defineProps<{
   rounds: Round[]
   players: Player[]
+  canUndo: boolean
 }>()
 
 const emit = defineEmits<{ undo: [] }>()
@@ -22,7 +23,7 @@ function getPlayerName(id: string): string {
     <div class="flex items-center justify-between mb-2">
       <h3 class="font-semibold text-gray-700">Round History ({{ rounds.length }})</h3>
       <button
-        v-if="rounds.length > 0"
+        v-if="rounds.length > 0 && canUndo"
         class="text-sm text-red-600 hover:underline min-h-[44px] px-2"
         @click="showConfirm = true"
       >
@@ -39,6 +40,7 @@ function getPlayerName(id: string): string {
         <span class="text-gray-400 w-8 shrink-0">#{{ i + 1 }}</span>
         <span class="text-gray-800 font-medium">{{ getPlayerName(round.winnerId) }}</span>
         <span class="text-gray-400">won</span>
+        <span class="ml-auto text-xs text-gray-400">{{ new Date(round.timestamp).toLocaleTimeString() }}</span>
       </li>
     </ol>
     <p v-else class="text-sm text-gray-400 italic">No rounds played yet.</p>

@@ -26,7 +26,6 @@ describe('computeRoundDelta', () => {
 describe('computeSessionBalances', () => {
   const baseSession: GameSession = {
     id: 's1',
-    title: 'Test Game',
     date: '2026-01-01T00:00:00.000Z',
     gameTypeId: 'gt1',
     buyIn: 1000,
@@ -35,7 +34,7 @@ describe('computeSessionBalances', () => {
   }
 
   it('Scenario 2.1: 1 round, Alice wins — balances sum to 0', () => {
-    const session: GameSession = { ...baseSession, rounds: [{ winnerId: 'alice' }] }
+    const session: GameSession = { ...baseSession, rounds: [{ winnerId: 'alice', timestamp: '2026-01-01T00:00:00.000Z' }] }
     const balances = computeSessionBalances(session)
 
     expect(balances['alice']).toBe(2000)
@@ -47,7 +46,7 @@ describe('computeSessionBalances', () => {
   it('Scenario 2.2: 2 rounds accumulated — Bob wins round 2', () => {
     const session: GameSession = {
       ...baseSession,
-      rounds: [{ winnerId: 'alice' }, { winnerId: 'bob' }],
+      rounds: [{ winnerId: 'alice', timestamp: '2026-01-01T00:00:00.000Z' }, { winnerId: 'bob', timestamp: '2026-01-01T00:01:00.000Z' }],
     }
     const balances = computeSessionBalances(session)
 
@@ -63,11 +62,11 @@ describe('computeSessionBalances', () => {
   it('Scenario 2.3: Undo last round — removing round 2 reverts to round-1 state', () => {
     const twoRounds: GameSession = {
       ...baseSession,
-      rounds: [{ winnerId: 'alice' }, { winnerId: 'bob' }],
+      rounds: [{ winnerId: 'alice', timestamp: '2026-01-01T00:00:00.000Z' }, { winnerId: 'bob', timestamp: '2026-01-01T00:01:00.000Z' }],
     }
     const oneRound: GameSession = {
       ...baseSession,
-      rounds: [{ winnerId: 'alice' }],
+      rounds: [{ winnerId: 'alice', timestamp: '2026-01-01T00:00:00.000Z' }],
     }
 
     const balancesAfterUndo = computeSessionBalances(oneRound)
