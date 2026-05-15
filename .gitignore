@@ -1,0 +1,8 @@
+# direnv configuration
+.envrc
+.direnv/
+
+*.zip
+*.tar.gz
+dist/
+build/
